@@ -1,0 +1,7 @@
+pyhocon==0.3.59
+pyspark==3.4.0
+apache-airflow==2.3.0
+# If you need specific database drivers, you may include them as well:
+# psycopg2==2.9.5
+# pyodbc==4.0.35
+# ...
