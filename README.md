@@ -1,178 +1,135 @@
-# This file describs the overall architecture, installation steps, and usage instructions for the skeleton ETL pipeline.
+# My ETL Project
 
----
----
----
----
-
-## ETL Pipeline Skeleton (Bronze → Silver → Gold) with PySpark, Apache Iceberg, Airflow, and pyhocon
-
-This repository demonstrates a basic framework for an ETL pipeline using PySpark, Apache Iceberg, Airflow for scheduling, and pyhocon for configuration management. The pipeline is split into three layers:
-
-1. **Bronze**: Ingest raw data from sources (e.g., Postgres, MSSQL) into a raw storage layer.  
-2. **Silver**: Refine and cleanse data from the Bronze layer into a more structured form.  
-3. **Gold**: Final layer for curated, business-ready data, often used for analytics or reporting.
-
----
+My ETL Project provides a scalable framework for extracting, transforming, and loading (ETL) data using Apache Spark and Apache Airflow. The project is designed to support multi-layer data processing, starting with a Bronze layer (data ingestion) with placeholders for Silver and Gold layers (data transformation and refinement) to be developed in the future.
 
 ## Project Structure
 
-```
-my_etl_project/
-├── configs/
-│   ├── bronze.conf
-│   ├── silver.conf
-│   └── gold.conf
-├── dags/
-│   └── my_etl_dag.py
-├── main_etl_job.py
-├── requirements.txt
-└── README.md
-```
+    my_etl_project/
+    ├── configs/
+    │   ├── bronze.conf
+    │   ├── silver.conf
+    │   └── gold.conf
+    ├── dags/
+    │   └── my_etl_dag.py
+    ├── main_etl_job.py
+    ├── requirements.txt
+    └── README.md
 
-- **`configs/`**  
-  - `bronze.conf`, `silver.conf`, `gold.conf` are separate HOCON configuration files for each layer.  
-  - Each config file includes the Spark configuration (`spark-config`), paths for data storage, and any relevant layer-specific settings or data source details.
+- **configs/**: Contains configuration files in HOCON format.
+  - **bronze.conf**: Configuration for the Bronze layer including Spark settings, Hive metastore details, and ETL-specific parameters such as JDBC connection settings and table definitions.
+  - **silver.conf** & **gold.conf**: Placeholder configuration files for future Silver and Gold layers.
+- **dags/**: Contains the Airflow DAG definition.
+  - **my_etl_dag.py**: Defines the DAG to run the ETL job daily via the SparkSubmitOperator.
+- **main_etl_job.py**: The main Python script that loads configurations, creates a Spark session, and executes the ETL process.
+- **requirements.txt**: Lists project dependencies (e.g., `pyhocon`, `pyspark`, `apache-airflow`).
 
-- **`dags/`**  
-  - `my_etl_dag.py` is the Airflow DAG definition. It has three tasks (Bronze → Silver → Gold) in a linear sequence, each triggered via SparkSubmitOperator.
+## Prerequisites
 
-- **`main_etl_job.py`**  
-  - The core PySpark ETL script. Determines which steps to run based on the config file (bronze, silver, or gold).
+- **Apache Spark** (v3.4.0)
+- **Apache Airflow** (v2.3.0)
+- **Python** (v3.7+ recommended)
+- Java (for Spark)
+- A properly configured Hadoop/YARN or local Spark deployment
 
-- **`requirements.txt`**  
-  - Python dependencies needed for this project (pyhocon, pyspark, airflow, etc.).
+## Installation
 
-- **`README.md`**  
-  - This documentation file.
+1. **Clone the repository:**
 
----
+   ```bash
+   git clone https://your-repository-url.git
+   cd my_etl_project
+   ```
 
-## Requirements
+2. **Set up a virtual environment (recommended):**
 
-- **Python 3.7+**  
-- **Apache Spark 3.x**  
-- **Apache Airflow 2.x**  
-- **JDBC drivers** (for Postgres, MSSQL, or any other source you need to connect to)  
-- **Apache Iceberg** (with the appropriate Spark and Iceberg extensions configured if you plan to write/read using Iceberg format)  
-- A configured **Airflow** environment with a working **SparkSubmitOperator** setup (i.e., a valid `conn_id="spark_default"`).
+   ```bash
+   python -m venv venv
+   source venv/bin/activate
+   ```
 
-Install required Python libraries:
+3. **Install dependencies:**
 
-```bash
-pip install -r requirements.txt
-```
-
----
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 ## Configuration
 
-You have **three HOCON config files**, one for each layer:
+The project uses HOCON configuration files to manage settings for each ETL layer.
 
-### Example: `configs/bronze.conf`
+- **bronze.conf**:
+  - **app**: Defines the application name (e.g., "bronzeLayer").
+  - **sparkConf**: Sets Spark properties such as the SQL warehouse directory, scheduler mode, and Hive metastore URIs.
+  - **etlConf**: Specifies ETL-related settings including JDBC connection details for Microsoft SQL Server and PostgreSQL, and defines the tables to ingest.
+  
+  *Note: Update placeholder values (e.g., `YOUR_HOST`, `YOUR_DATABASE`, `YOUR_USERNAME`, `YOUR_PASSWORD`) with actual connection details.*
 
-```hocon
-{
-  layer = "bronze"
+- **silver.conf** & **gold.conf**:
+  - Currently serve as placeholders with similar Spark configurations as the Bronze layer.
+  - Future enhancements will include additional ETL and transformation logic.
 
-  spark-config: {
-    appName: "BronzeLayerJob"
-    master: "local[*]"
-    # Additional Spark + Iceberg configs
-  }
+## Running the ETL Job
 
-  data-sources: {
-    postgres: {
-      url = "jdbc:postgresql://YOUR_POSTGRES_HOST:5432/YOUR_DB"
-      user = "YOUR_USERNAME"
-      password = "YOUR_PASSWORD"
-      driver = "org.postgresql.Driver"
-    }
-    mssql: {
-      url = "jdbc:sqlserver://YOUR_MSSQL_HOST:1433;databaseName=YOUR_DB"
-      user = "YOUR_USERNAME"
-      password = "YOUR_PASSWORD"
-      driver = "com.microsoft.sqlserver.jdbc.SQLServerDriver"
-    }
-  }
+### Using Spark Submit
 
-  paths: {
-    bronze = "s3://your-bucket/bronze-layer"
-    silver = "s3://your-bucket/silver-layer"
-    gold   = "s3://your-bucket/gold-layer"
-  }
-}
-```
-
-> The `layer` parameter must be set to `"bronze"`, `"silver"`, or `"gold"` in each respective config so the script knows which portion of the pipeline to run.
-
----
-
-## Usage
-
-### 1. Running Locally (Without Airflow)
-
-You can run each layer’s job manually by passing the corresponding config file to `main_etl_job.py`:
+Run the ETL job with a command similar to the following (adjust paths and parameters as needed):
 
 ```bash
-# Bronze layer
-python main_etl_job.py configs/bronze.conf
-
-# Silver layer
-python main_etl_job.py configs/silver.conf
-
-# Gold layer
-python main_etl_job.py configs/gold.conf
+spark3-submit \
+  --master yarn \
+  --deploy-mode client \
+  --archives pyspark_myprj_env.tar.gz#pyspark_myprj_env \
+  --conf spark.pyspark.python=./pyspark_myprj_env/bin/python \
+  --conf spark.pyspark.driver.python=./unarchive_new/bin/python \
+  --driver-memory 2G \
+  --executor-memory 4G \
+  --principal user1@BIGDATA.YOURHOST.COM \
+  --keytab /home/user1/user1.keytab \
+  --driver-class-path /home/user1/user1_curl_point/postgresql-42.7.1.jar:/home/user1/user1_curl_point/mssql-jdbc-9.2.1.jre8.jar \
+  --jars /home/user1/user1_curl_point/postgresql-42.7.1.jar,/home/user1/user1_curl_point/mssql-jdbc-9.2.1.jre8.jar \
+  --conf spark.shuffle.service.enabled=true \
+  --conf spark.shuffle.service.port=7447 \
+  --conf spark.dynamicAllocation.enabled=true \
+  --conf spark.dynamicAllocation.minExecutors=0 \
+  --conf spark.dynamicAllocation.maxExecutors=20 \
+  --conf spark.dynamicAllocation.executorIdleTimeout=60 \
+  --conf spark.dynamicAllocation.schedulerBacklogTimeout=1 \
+  --conf spark.eventLog.enabled=true \
+  --conf spark.eventLog.dir=hdfs://nameservice1/user/spark/applicationHistory \
+  --conf spark.yarn.historyServer.address=http://mn03.yourhost.com:18088 \
+  --conf spark.yarn.historyServer.allowTracking=true \
+  /home/user1/user1_curl_point/my_prj_modernization/main_etl_job.py \
+  /home/user1/user1_curl_point/my_prj_modernization/configs/bronze.conf
 ```
 
-This will launch a local Spark session, read the config, and execute the appropriate ingestion/transformation steps.
+### Running the Airflow DAG
 
-### 2. Running via Airflow
+The Airflow DAG located in `dags/my_etl_dag.py` schedules the Bronze layer ETL job to run daily.
 
-1. Ensure your Airflow environment is correctly configured, and you have a Spark connection (`spark_default` or equivalent) set up in Airflow connections.  
-2. Copy (or symlink) the `my_etl_dag.py` into your Airflow `dags/` directory or set your `AIRFLOW_HOME` to this project.  
-3. Start Airflow services (webserver, scheduler, etc.).  
-4. In the Airflow UI, enable the **`my_etl_dag`**.  
-5. Airflow will run the three tasks in sequence:
+1. **Configure Airflow**:
+   - Place the `my_etl_dag.py` file in your Airflow DAGs folder.
+   - Update the `BASE_PATH` variable in the DAG file to point to your project directory.
+2. **Start Airflow**:
+   ```bash
+   airflow scheduler
+   airflow webserver
+   ```
+3. **Trigger the DAG**:
+   - Use the Airflow web interface to monitor and manually trigger the DAG if needed.
 
-   - **`run_bronze_layer`** → Reads from sources, writes to Bronze.  
-   - **`run_silver_layer`** → Reads from Bronze, writes to Silver.  
-   - **`run_gold_layer`** → Reads from Silver, writes to Gold.  
+## Main ETL Job Overview
 
-### 3. Customizing the Spark Submit Parameters
+- **Configuration Parsing**: The `main_etl_job.py` script uses the `pyhocon` library to load and parse configuration files.
+- **Spark Session Creation**: A Spark session is created with Hive support using the settings specified in the configuration.
+- **ETL Process**: The script reads data from source databases via JDBC, applies basic transformations, and writes the data to Iceberg tables in Hive.
+- **Error Handling**: Errors during configuration or data processing are logged, and exceptions are raised for critical issues.
 
-Inside the DAG (`my_etl_dag.py`), you can modify each `SparkSubmitOperator` with your desired memory, cores, or other Spark config:
+## Future Enhancements
 
-```python
-run_bronze = SparkSubmitOperator(
-    task_id="run_bronze_layer",
-    application="/path/to/my_etl_project/main_etl_job.py",
-    name="BronzeLayerJob",
-    conn_id="spark_default",
-    application_args=["/path/to/my_etl_project/configs/bronze.conf"],
-    executor_cores=2,
-    executor_memory="2g",
-    driver_memory="1g",
-    verbose=True
-)
-```
+- **Silver and Gold Layers**: Further data transformations and refinements will be implemented.
+- **Advanced Transformations**: Incorporation of more complex data processing logic as requirements evolve.
+- **Testing & Monitoring**: Integration with testing frameworks and monitoring tools for enhanced reliability.
 
----
+## Contributing
 
-## Troubleshooting
-
-1. **JDBC driver issues**: Make sure you have the correct driver jar(s) accessible to Spark. If running locally, you might need to place them in your Spark `jars/` directory or supply `--jars` when submitting Spark jobs.  
-2. **Iceberg configuration**: Ensure your Spark session is properly configured for Iceberg (e.g., adding `spark.sql.extensions` and setting up catalogs). This may involve additional Spark config or referencing a Hive metastore.  
-3. **Airflow scheduling**: If tasks do not appear or do not run, ensure your Airflow environment is active, the DAG is unpaused, and you don’t have conflicting DAG IDs or errors in your logs.  
-
----
-
-## Notes & Next Steps
-
-- **Data Validation & Quality Checks**: In a production pipeline, incorporate validation or schema checks before writing to subsequent layers.  
-- **Error Handling & Logging**: Integrate robust error handling, log collection, and alerting to track failures and data anomalies.  
-- **Dependency & Partition Management**: If data is partitioned by date or other fields, ensure your read/write operations handle those partitions correctly.  
-- **Scalability**: For larger datasets, configure Spark to run on a cluster (e.g., YARN, Kubernetes, or a managed service like EMR/Databricks).  
-- **Security**: Secure passwords and sensitive credentials using environment variables or Airflow connections, rather than storing them in plain text.
-
----
+Contributions are welcome! Please fork the repository and submit pull requests for any improvements or bug fixes.

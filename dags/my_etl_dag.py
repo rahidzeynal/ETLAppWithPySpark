@@ -62,5 +62,5 @@ with DAG(
         verbose=True
     )
 
-    # Create a simple linear dependency: Bronze -> Silver -> Gold
-    run_bronze >> run_silver >> run_gold
+    # Create a simple linear dependency: Bronze -> Silver -> Gold #>> run_silver >> run_gold commented for now
+    run_bronze
